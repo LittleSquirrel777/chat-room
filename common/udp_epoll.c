@@ -11,6 +11,7 @@ extern int port;
 extern struct User *rteam;
 extern struct User *bteam;
 extern int repollfd, bepollfd;
+extern pthread_mutex_t rmutex, bmutex;
 
 void add_event_ptr(int epollfd, int fd, int events, struct User *user)
 {
@@ -37,22 +38,31 @@ int find_sub(struct User *team)
 
 void add_to_sub_reactor(struct User *user)
 {
-    int i;
     struct User *team = (user -> team ? bteam : rteam);
-    int sub = find_sub(team);
-    if (sub < 0) {
-        fprintf(stderr, "Full Team\n");
-        return ;
+    DBG(YELLOW"Main Thread : "NONE"Add to sub_reactor\n");
+    if (user->team) {
+        pthread_mutex_lock(&bmutex);
+    } else {
+        pthread_mutex_lock(&rmutex);
     }
-    //team[sub].online = 1;
+    //if (sub < 0) {
+    //    fprintf(stderr, "Full Team\n");
+    //    return ;
+    //}
+    int sub = find_sub(team);
     team[sub] = *user;
     team[sub].online = 1;
     team[sub].flag = 10;
-    DBG(L_RED"sub = %d, name = %s\n", sub, team[sub].name);
+    if (user->team) {
+        pthread_mutex_unlock(&bmutex);
+    } else {
+        pthread_mutex_unlock(&rmutex);
+    }
+    DBG(L_RED"sub = %d, name = %s\n"NONE, sub, team[sub].name);
     if (user->team) {
         add_event_ptr(bepollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
     } else {
-        add_event_ptr(repollfd, team[sub].fd, EPOLLIN |EPOLLET, &team[sub]);
+        add_event_ptr(repollfd, team[sub].fd, EPOLLIN | EPOLLET, &team[sub]);
     }
 
 }
@@ -107,9 +117,9 @@ int udp_accept(int fd, struct User *user)
         return -1;
     }
 
-    response.type = 0;
-    strcpy(response.msg, "Login Success. Enjoy yourself");
-    sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
+    //response.type = 0;
+    //strcpy(response.msg, "Login Success. Enjoy yourself");
+    //sendto(fd, (void *)&response, sizeof(response), 0, (struct sockaddr *)&client, len);
 
     if (request.team) {
         DBG(GREEN"Info"NONE" : "BLUE"%s login on %s:%d <%s>\n", request.name, inet_ntoa(client.sin_addr), ntohs(client.sin_port), request.msg);
@@ -121,5 +131,12 @@ int udp_accept(int fd, struct User *user)
     user->team = request.team;
     new_fd = udp_connect(&client);
     user->fd = new_fd;
+    char cmd[512] = {0};
+    response.type = 0;
+    bzero(cmd, sizeof(cmd));
+    sprintf(cmd, "<%s> Longin Sucess, Enjoy Yourself.\n", user->name);
+    strcpy(response.msg, cmd);
+    send(new_fd, (void *)&response, sizeof(response), 0);
+    
     return new_fd;
 }

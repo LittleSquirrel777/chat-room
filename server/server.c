@@ -15,16 +15,27 @@ char *conf = "./footballd.conf";
 int repollfd, bepollfd; //从反应堆
 int port = 0;
 struct User *rteam, *bteam;
+pthread_mutex_t rmutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t bmutex = PTHREAD_MUTEX_INITIALIZER;
 
 void logout(int signum)
 {
     char buff[50] = "The Server is logout!";
     struct ChatMsg msg;
+    bzero(&msg, sizeof(msg));
     strcpy(msg.msg, buff);
+    strcpy(msg.name, "Server");
     msg.type = CHAT_FIN;
-    for (int i = rteam->head; ; ) {
-        if (rteam[i].)
-    }
+    //for (int i = 0; i < MAX; i++) {
+    //    if (rteam[i].online == 1) {
+    //        send(rteam[i].fd, (void *)&msg, sizeof(msg), 0);
+    //    }
+    //    if (bteam[i].online == 1) {
+    //        send(bteam[i].fd, (void *)&msg, sizeof(msg), 0);
+    //    }
+    //}
+    send_all(&msg);
+    exit(0);
 
 }
 int main(int argc, char *argv[])
@@ -68,8 +79,8 @@ int main(int argc, char *argv[])
     bteam = (struct User *)calloc(MAX, sizeof(struct User));
 
     epollfd = epoll_create(MAX * 2);
-    repollfd = epoll_create(MAX * 2);
-    bepollfd = epoll_create(MAX * 2);
+    repollfd = epoll_create(MAX);
+    bepollfd = epoll_create(MAX);
 
     if (epollfd < 0 || repollfd < 0 || bepollfd < 0) {
         perror("epoll_create()");
@@ -98,6 +109,7 @@ int main(int argc, char *argv[])
     bzero(&client, sizeof(client));
     socklen_t len = sizeof(client);
     signal(SIGINT, logout);
+    
     while (1) {
         DBG(YELLOW"Main Reactor"NONE" : Waiting for client.\n");
         int nfds = epoll_wait(epollfd, events, MAX * 2, -1);
@@ -107,6 +119,7 @@ int main(int argc, char *argv[])
         }
         for (int i = 0; i < nfds; i++) {
             struct User user;
+            bzero(&user, sizeof(user));
             char buff[512] = {0};
             if (events[i].data.fd == listener) {
                 int new_fd = udp_accept(listener, &user);

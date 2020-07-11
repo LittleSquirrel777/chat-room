@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         strcpy(request.msg, get_conf_value(conf, "LOGMSG"));
     }
 
-    DBG("<"GREEN"Conf Show"NONE"> server_ip = %s, port = %d, team = %s, name = %s %s", server_ip, server_port, (request.team ? "BLUE":"RED"), request.name, request.msg);
+    DBG("<"GREEN"Conf Show"NONE"> : server_ip = %s, port = %d, team = %s, name = %s\n%s", server_ip, server_port, (request.team ? "BLUE":"RED"), request.name, request.msg);
     
     struct sockaddr_in server;
     server.sin_family = AF_INET;
@@ -120,15 +120,31 @@ int main(int argc, char *argv[])
     //send(sockfd, buff, strlen(buff), 0);
     //recv(sockfd, buff, sizeof(buff), 0);
     //DBG(RED"Server Info"NONE" : %s", buff);
+    
+    pthread_t recv_t;
+    pthread_create(&recv_t, NULL, do_recv, NULL);
+
     signal(SIGINT, logout);
+    struct ChatMsg msg;
     while (1) {
         //char buff[512] = {0};
-        struct ChatMsg msg;
+        //struct ChatMsg msg;
+        bzero(&msg, sizeof(msg));
         msg.type = CHAT_WALL;
         printf(RED"Please Input: \n"NONE);
         scanf("%[^\n]s", msg.msg);
+        strcpy(msg.name, request.name);
         getchar();
-        send(sockfd, (void *)&msg, sizeof(msg), 0);
+        if (strlen(msg.msg)) {
+            if (msg.msg[0] == '@') {
+                msg.type = CHAT_MSG;
+            }
+            if (msg.msg[0] == '#') {
+                msg.type = CHAT_FUNC;
+            }
+            send(sockfd, (void *)&msg, sizeof(msg), 0);
+        }
+        //send(sockfd, (void *)&msg, sizeof(msg), 0);
     }
     return 0;
 }
