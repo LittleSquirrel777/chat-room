@@ -10,8 +10,8 @@
 int server_port = 0;
 char server_ip[20] = {0};
 int team = -1;
-char name[20] = {0};
-char log_msg[512] = {0};
+//char name[20] = {0};
+//char log_msg[512] = {0};
 char *conf = "./football.conf";
 int sockfd = -1;
 
